@@ -56,25 +56,5 @@ export class IdrissCrypto extends BaseIdrissCrypto {
 
   public async getConnectedAccount(): Promise<string> {
     return this.web3Provider.getConnectedAccount();
-    //
-    // const ethereum = this.getInjectedEthereum();
-    //
-    // if (ethereum === undefined) {
-    //   throw new TypeError('No wallet detected.');
-    // }
-    //
-    // const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
-    // return accounts[0];
   }
 }
-
-export {
-  Authorization,
-  CreateOTPResponse,
-  WrongOTPException,
-} from './auth/authorization';
-export {
-  AuthorizationTestnet,
-  CreateOTPResponseTestnet,
-  WrongOTPExceptionTestnet,
-} from './auth/authorizationTestnet';
