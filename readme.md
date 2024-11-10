@@ -94,12 +94,12 @@ yarn add idriss-crypto
 And in code:
 
 ```javascript
-import {IdrissCrypto, Authorization} from "idriss-crypto/browser";
+import {IdrissCrypto} from "idriss-crypto/browser";
 ```
 ## Webpage without webpack
 If you prefer using ES6 modules, you can import the library with
 ```js
-import {IdrissCrypto, Authorization} from "https://unpkg.com/idriss-crypto/lib/bundle/modules.js"
+import {IdrissCrypto} from "https://unpkg.com/idriss-crypto/lib/bundle/modules.js"
 ```
 
 Alternatively, you can simply load it as a js file in your HTML environment using this <script> tag:
@@ -110,7 +110,7 @@ Alternatively, you can simply load it as a js file in your HTML environment usin
 then the objects are available as global variables under IdrissCrypto, for example
 ```js
 let idriss = new IdrissCrypto.IdrissCrypto();
-IdrissCrypto.Authorization.CreateOTP();
+idriss.resolve(...)
 ```
 ## node.js
 From cli:
@@ -124,10 +124,10 @@ And in code:
 
 ```javascript
 //for nodejs using ES6 modules
-import {IdrissCrypto, Authorization} from "idriss-crypto";
+import {IdrissCrypto} from "idriss-crypto";
 
 //for nodejs using commonJS
-const {IdrissCrypto, Authorization} = require("idriss-crypto");
+const {IdrissCrypto} = require("idriss-crypto");
 ```
 
 The library is designed both for es6 and cjs.
