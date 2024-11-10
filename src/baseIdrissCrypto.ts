@@ -29,8 +29,6 @@ import type { AssetLiability } from './types/assetLiability';
 import { AssetType } from './types/assetType';
 import type { VotingParams } from './types/votingParams';
 
-const IDRISS_HOMEPAGE = 'https://idriss.xyz';
-
 export abstract class BaseIdrissCrypto {
   protected web3Provider: Web3Provider;
   protected registryWeb3Provider: Web3Provider;
@@ -62,9 +60,6 @@ export abstract class BaseIdrissCrypto {
       priceOracle:
         connectionOptions.priceOracleContractAddress ??
         CONTRACTS_ADDRESSES.priceOracle,
-      idrissSendToAnyone:
-        connectionOptions.sendToAnyoneContractAddress ??
-        CONTRACTS_ADDRESSES.idrissSendToAnyone,
       idrissTipping:
         connectionOptions.tippingContractAddress ??
         CONTRACTS_ADDRESSES.idrissTipping,
@@ -207,11 +202,9 @@ export abstract class BaseIdrissCrypto {
   ) {
     let result: MultiSendToHashTransactionReceipt | TransactionReceipt;
 
-    const sendToAnyoneContractAllowances = new Map<string, AssetLiability>();
     const tippingContractAllowances = new Map<string, AssetLiability>();
 
     const registeredUsersSendParams = [];
-    const newUsersSendParams = [];
 
     for (const sendParam of sendParams) {
       if (this.web3Provider.isAddress(sendParam.beneficiary)) {
@@ -224,10 +217,6 @@ export abstract class BaseIdrissCrypto {
         continue;
       }
 
-      const hash = await this.getUserHash(
-        sendParam.walletType!,
-        sendParam.beneficiary,
-      );
       const resolvedIDriss = await this.resolve(sendParam.beneficiary);
 
       //TODO: add approve for all for ERC721
@@ -242,24 +231,10 @@ export abstract class BaseIdrissCrypto {
           sendParam.asset,
         );
         registeredUsersSendParams.push(sendParam);
-      } else {
-        sendParam.hash = hash;
-        this.addAssetForAllowanceToMap(
-          sendToAnyoneContractAllowances,
-          sendParam.asset,
-        );
-        newUsersSendParams.push(sendParam);
       }
     }
 
     const signer = await this.getConnectedAccount();
-
-    await this.approveAssets(
-      [...sendToAnyoneContractAllowances.values()],
-      signer,
-      this.contractsAddressess.idrissSendToAnyone,
-      transactionOptions,
-    );
 
     await this.approveAssets(
       [...tippingContractAllowances.values()],
@@ -275,38 +250,12 @@ export abstract class BaseIdrissCrypto {
       );
     }
 
-    if (newUsersSendParams.length > 0) {
-      result = await this.callWeb3multiSendToAnyone(
-        newUsersSendParams,
-        transactionOptions,
-      );
-    }
-
     return result!;
   }
 
   private async encodeTippingToHex(param: SendToAnyoneParams) {
     const method = await this.getTippingMethod(param);
     return method.encodeABI();
-  }
-
-  private async encodeSendToAnyoneToHex(
-    hash: string,
-    param: SendToAnyoneParams,
-  ) {
-    return this.idrissSendToAnyoneContract.encodeABI({
-      method: {
-        name: 'sendToAnyone',
-        args: [
-          hash,
-          param.asset.amount,
-          param.asset.type.valueOf(),
-          param.asset.assetContractAddress ?? this.contractsAddressess.zero,
-          param.asset.assetId ?? 0,
-          param.message ?? '',
-        ],
-      },
-    });
   }
 
   private addAssetForAllowanceToMap(
@@ -357,26 +306,21 @@ export abstract class BaseIdrissCrypto {
       return result;
     }
 
-    const hash = await this.getUserHash(resolveOptions, beneficiary);
     const resolvedIDriss = await this.resolve(beneficiary);
 
-    result = await (resolvedIDriss &&
-    resolvedIDriss[resolveOptions.walletTag!] &&
-    resolvedIDriss[resolveOptions.walletTag!].length > 0
-      ? this.callWeb3Tipping(
-          resolvedIDriss[resolveOptions.walletTag!],
-          asset,
-          message,
-          transactionOptions,
-        )
-      : this.callWeb3SendToAnyone(
-          hash,
-          beneficiary,
-          asset,
-          message,
-          transactionOptions,
-        ));
-    return result;
+    if (
+      resolvedIDriss &&
+      resolvedIDriss[resolveOptions.walletTag!] &&
+      resolvedIDriss[resolveOptions.walletTag!].length > 0
+    ) {
+      return await this.callWeb3Tipping(
+        resolvedIDriss[resolveOptions.walletTag!],
+        asset,
+        message,
+        transactionOptions,
+      );
+    }
+    return null;
   }
 
   vote(
@@ -400,41 +344,6 @@ export abstract class BaseIdrissCrypto {
     const cleanedTagAddress = getWalletTagAddress(resolveOptions);
     const transformedBeneficiary = await transformIdentifier(beneficiary);
     return this.digestMessage(transformedBeneficiary + cleanedTagAddress);
-  }
-
-  public async claim(
-    beneficiary: string,
-    claimPassword: string,
-    walletType: NonOptional<ResolveOptions>,
-    asset: AssetLiability,
-    transactionOptions: TransactionOptions = {},
-  ) {
-    if (walletType.network !== 'evm') {
-      throw new Error('Only transfers on Polygon are supported at the moment');
-    }
-
-    const hash = await this.getUserHash(walletType, beneficiary);
-
-    return this.callWeb3ClaimPayment(
-      hash,
-      claimPassword,
-      asset,
-      transactionOptions,
-    );
-  }
-
-  public async revertPayment(
-    beneficiary: string,
-    assetType: AssetType,
-    assetContractAddress: string = this.contractsAddressess.zero,
-    transactionOptions: TransactionOptions = {},
-  ) {
-    return this.callRevertPayment(
-      beneficiary,
-      assetType,
-      assetContractAddress,
-      transactionOptions,
-    );
   }
 
   public async getHashForIdentifier(
@@ -568,47 +477,6 @@ export abstract class BaseIdrissCrypto {
     return transactionReceipt;
   }
 
-  private async callRevertPayment(
-    beneficiary: string,
-    assetType: number,
-    assetContractAddress: string,
-    transactionOptions: TransactionOptions,
-  ): Promise<TransactionReceipt> {
-    const signer = await this.getConnectedAccount();
-    if (!transactionOptions.gas) {
-      try {
-        transactionOptions.gas =
-          await this.idrissSendToAnyoneContract.estimateGas({
-            method: {
-              name: 'revertPayment',
-              args: [beneficiary, assetType, assetContractAddress],
-            },
-            estimateGasOptions: {
-              from: transactionOptions.from ?? signer,
-            },
-          });
-      } catch (error) {
-        console.log('Could not estimate gas:', error);
-      }
-    }
-
-    const sendOptions = {
-      ...transactionOptions,
-      from: transactionOptions.from ?? signer,
-    };
-
-    const transactionReceipt =
-      await this.idrissSendToAnyoneContract.sendTransaction({
-        method: {
-          name: 'revertPayment',
-          args: [beneficiary, assetType, assetContractAddress],
-        },
-        transactionOptions: sendOptions,
-      });
-
-    return transactionReceipt;
-  }
-
   private async getVotingMethod(
     params: VotingParams,
   ): Promise<PreparedTransaction> {
@@ -691,7 +559,6 @@ export abstract class BaseIdrissCrypto {
         break;
       }
     }
-
     return method;
   }
 
@@ -746,212 +613,6 @@ export abstract class BaseIdrissCrypto {
     delete transactionOptions.gas;
 
     return transactionReceipt;
-  }
-
-  private async callWeb3multiSendToAnyone(
-    params: SendToAnyoneParams[],
-    transactionOptions: TransactionOptions,
-  ): Promise<MultiSendToHashTransactionReceipt> {
-    let polToSend: BigNumberish = BigNumber.from(0);
-    const signer = await this.getConnectedAccount();
-    const encodedCalldata = [];
-    const beneficiaryClaims = [];
-
-    for (const param of params) {
-      const newParam = { ...param, asset: { ...param.asset } };
-      const paymentFee = await this.calculateSendToAnyonePaymentFee(
-        newParam.asset.amount,
-        newParam.asset.type,
-      );
-      let properParamAmountToSend;
-
-      if (newParam.asset.type === AssetType.Native) {
-        properParamAmountToSend = BigNumber.from(newParam.asset.amount).add(
-          paymentFee,
-        );
-        // for native currency we pass item value in amount
-        newParam.asset.amount = properParamAmountToSend;
-      } else {
-        properParamAmountToSend = paymentFee;
-      }
-
-      polToSend = polToSend.add(properParamAmountToSend);
-
-      const claimPassword = await this.generateClaimPassword();
-      const hashWithPassword = await this.generateHashWithPassword(
-        newParam.hash!,
-        claimPassword,
-      );
-      encodedCalldata.push(
-        await this.encodeSendToAnyoneToHex(hashWithPassword, newParam),
-      );
-
-      const claimUrl = this.generateClaimUrl(
-        newParam.beneficiary,
-        newParam.asset,
-        '$TBD$',
-        claimPassword,
-      );
-      beneficiaryClaims.push({
-        beneficiary: newParam.hash!,
-        claimPassword: claimPassword,
-        claimUrl: claimUrl,
-      });
-
-      params[params.indexOf(param)] = newParam;
-    }
-
-    if (!transactionOptions.gas) {
-      try {
-        transactionOptions.gas =
-          await this.idrissSendToAnyoneContract.estimateGas({
-            method: { name: 'batch', args: [encodedCalldata] },
-            estimateGasOptions: {
-              from: transactionOptions.from ?? signer,
-              value: polToSend.toString(),
-            },
-          });
-      } catch (error) {
-        console.log('Could not estimate gas:', error);
-      }
-    }
-
-    const transactionReceipt =
-      await this.idrissSendToAnyoneContract.sendTransaction({
-        method: {
-          name: 'batch',
-          args: [encodedCalldata],
-        },
-        transactionOptions: {
-          ...transactionOptions,
-          from: transactionOptions.from ?? signer,
-          value: polToSend.toString(),
-        },
-      });
-
-    delete transactionOptions.gas;
-
-    for (const val of beneficiaryClaims) {
-      val.claimUrl = val.claimUrl.replace(
-        '$TBD$',
-        `${transactionReceipt.blockNumber}`,
-      );
-    }
-
-    return {
-      transactionReceipt,
-      data: beneficiaryClaims,
-    };
-  }
-
-  private generateClaimUrl(
-    beneficiary: string,
-    asset: AssetLiability,
-    block: string,
-    claimPassword: string,
-  ) {
-    const assetId =
-      asset.type === AssetType.ERC1155 || asset.type === AssetType.ERC721
-        ? `&assetId=${asset.assetId}`
-        : '';
-    const assetAddress =
-      asset.type === AssetType.Native
-        ? ''
-        : `&assetAddress=${asset.assetContractAddress}`;
-    return (
-      `${IDRISS_HOMEPAGE}/claim?identifier=${beneficiary}&claimPassword=${claimPassword}` +
-      `${assetId}&assetType=${asset.type}${assetAddress}&blockNumber=${block}`
-    );
-  }
-
-  private async callWeb3SendToAnyone(
-    hash: string,
-    beneficiary: string,
-    asset: AssetLiability,
-    message: string,
-    transactionOptions: TransactionOptions,
-  ): Promise<{
-    transactionReceipt: TransactionReceipt;
-    claimUrl: string;
-    claimPassword: string;
-  }> {
-    const paymentFee = await this.calculateSendToAnyonePaymentFee(
-      asset.amount,
-      asset.type,
-    );
-    const polToSend =
-      asset.type === AssetType.Native
-        ? BigNumber.from(asset.amount).add(paymentFee)
-        : paymentFee;
-    const signer = await this.getConnectedAccount();
-
-    await this.approveAssets(
-      [asset],
-      signer,
-      this.contractsAddressess.idrissSendToAnyone,
-      transactionOptions,
-    );
-
-    const claimPassword = await this.generateClaimPassword();
-    const hashWithPassword = await this.generateHashWithPassword(
-      hash,
-      claimPassword,
-    );
-    if (!transactionOptions.gas) {
-      try {
-        transactionOptions.gas =
-          await this.idrissSendToAnyoneContract.estimateGas({
-            method: {
-              name: 'sendToAnyone',
-              args: [
-                hashWithPassword,
-                asset.amount,
-                asset.type.valueOf(),
-                asset.assetContractAddress ?? this.contractsAddressess.zero,
-                asset.assetId ?? 0,
-                message ?? '',
-              ],
-            },
-            estimateGasOptions: {
-              from: transactionOptions.from ?? signer,
-              value: polToSend.toString(),
-            },
-          });
-      } catch (error) {
-        console.log('Could not estimate gas:', error);
-      }
-    }
-
-    const transactionReceipt =
-      await this.idrissSendToAnyoneContract.sendTransaction({
-        method: {
-          name: 'sendToAnyone',
-          args: [
-            hashWithPassword,
-            asset.amount,
-            asset.type.valueOf(),
-            asset.assetContractAddress ?? this.contractsAddressess.zero,
-            asset.assetId ?? 0,
-            message ?? '',
-          ],
-        },
-        transactionOptions: {
-          ...transactionOptions,
-          from: transactionOptions.from ?? signer,
-          value: polToSend.toString(),
-        },
-      });
-
-    return {
-      transactionReceipt,
-      claimPassword,
-      claimUrl: this.generateClaimUrl(
-        beneficiary,
-        asset,
-        `${transactionReceipt.blockNumber}`,
-        claimPassword,
-      ),
-    };
   }
 
   private async approveAssets(
@@ -1024,81 +685,6 @@ export abstract class BaseIdrissCrypto {
         args: [paymentAmount, assetType],
       },
     });
-  }
-
-  public async calculateSendToAnyonePaymentFee(
-    paymentAmount: BigNumberish,
-    assetType: AssetType,
-  ) {
-    return this.idrissSendToAnyoneContract.callMethod({
-      method: {
-        name: 'getPaymentFee',
-        args: [paymentAmount, assetType],
-      },
-    });
-  }
-
-  private async callWeb3ClaimPayment(
-    hash: string,
-    claimPass: string,
-    asset: AssetLiability,
-    transactionOptions: TransactionOptions = {},
-  ): Promise<TransactionReceipt> {
-    const signer = await this.getConnectedAccount();
-
-    if (
-      asset.type !== AssetType.Native &&
-      (!asset.assetContractAddress || asset.assetContractAddress.length === 0)
-    ) {
-      throw new Error('Invalid asset contract address sent for claiming');
-    }
-
-    if (!transactionOptions.gas) {
-      try {
-        transactionOptions.gas =
-          await this.idrissSendToAnyoneContract.estimateGas({
-            method: {
-              name: 'claim',
-              args: [
-                hash,
-                claimPass,
-                asset.type.valueOf(),
-                asset.assetContractAddress ?? this.contractsAddressess.zero,
-              ],
-            },
-            estimateGasOptions: {
-              from: transactionOptions.from ?? signer,
-            },
-          });
-      } catch (error) {
-        console.log('Could not estimate gas:', error);
-      }
-    }
-
-    return this.idrissSendToAnyoneContract.sendTransaction({
-      method: {
-        name: 'claim',
-        args: [
-          hash,
-          claimPass,
-          asset.type.valueOf(),
-          asset.assetContractAddress ?? this.contractsAddressess.zero,
-        ],
-      },
-      transactionOptions: {
-        ...transactionOptions,
-        from: transactionOptions.from ?? signer,
-        //TODO: check on this, should work automatically
-        nonce: await this.web3Provider.getTransactionCount(
-          transactionOptions.from ?? signer,
-        ),
-      },
-    });
-  }
-
-  protected async generateClaimPassword() {
-    const hex = this.web3Provider.randomHex(16).slice(2);
-    return hex;
   }
 
   private async authorizeERC20ForContract(
