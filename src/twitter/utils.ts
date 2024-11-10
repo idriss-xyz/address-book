@@ -19,12 +19,14 @@ export const reverseTwitterID = async (id: string): Promise<string> => {
         (await response.text()),
     );
   const json = await response.json();
-  return json.twitterNames[id];
+  return json[id];
 };
 
 export const getTwitterID = async (
   inputCombination: string,
 ): Promise<string> => {
+  console.log(IDRISS_GET_TWITTER_ID_URL + encodeURIComponent(inputCombination));
+
   const response = await fetchSafe(
     IDRISS_GET_TWITTER_ID_URL + encodeURIComponent(inputCombination),
   );

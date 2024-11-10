@@ -1,5 +1,5 @@
 export const IDRISS_GET_TWITTER_NAME_URL =
-  'https://www.idriss.xyz/v1/getTwitterNames?ids=';
+  'https://api.idriss.xyz/v2/getTwitterNames?ids=';
 
 export const IDRISS_GET_TWITTER_ID_URL =
-  'https://www.idriss.xyz/v1/getTwitterID?identifier=';
+  'https://api.idriss.xyz/v2/getTwitterID?identifier=';

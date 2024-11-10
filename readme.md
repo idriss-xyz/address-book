@@ -10,23 +10,21 @@ IDriss builds tools making web3 more usable for everyone 🤝
 
 ## Content
 
-This library lets you integrate 4 independent functions from two products:
+This library lets you integrate 3 independent functions from two products:
 
 **IDriss Book** - decentralized mapping of emails, phone numbers and Twitter usernames to wallet addresses
 1. [Resolving](#1-resolving)
 2. [Reverse resolving](#2-reverse-resolving)
-3. [Registering new records](#3-registering-new-records)
 
 **IDriss Send** - mass web3 onboarding & asset distribution tool
 
-4. [Sending crypto & NFTs to emails, phone numbers, and Twitter usernames](#4-sending-crypto--nfts-to-emails-phone-numbers-and-twitter-usernames)
+3. [Sending crypto & NFTs to emails, phone numbers, and Twitter usernames](#3-sending-crypto--nfts-to-emails-phone-numbers-and-twitter-usernames)
 
 ## Benefits
 
 - Improving UX by letting use familiar web2 identifiers in search bars and input fields
 - Augmenting UI by replacing wallet addresses with human-readable names
-- Linking Twitter usernames, emails, and phone numbers to user profiles in a decentralized manner
-- Scaling your app beyond crypto-native userbase
+- Scaling your app beyond a crypto-native userbase
 
 ## Cloning This Lib
 ```
@@ -96,12 +94,12 @@ yarn add idriss-crypto
 And in code:
 
 ```javascript
-import {IdrissCrypto, Authorization} from "idriss-crypto/browser";
+import {IdrissCrypto} from "idriss-crypto/browser";
 ```
 ## Webpage without webpack
 If you prefer using ES6 modules, you can import the library with
 ```js
-import {IdrissCrypto, Authorization} from "https://unpkg.com/idriss-crypto/lib/bundle/modules.js"
+import {IdrissCrypto} from "https://unpkg.com/idriss-crypto/lib/bundle/modules.js"
 ```
 
 Alternatively, you can simply load it as a js file in your HTML environment using this <script> tag:
@@ -112,7 +110,7 @@ Alternatively, you can simply load it as a js file in your HTML environment usin
 then the objects are available as global variables under IdrissCrypto, for example
 ```js
 let idriss = new IdrissCrypto.IdrissCrypto();
-IdrissCrypto.Authorization.CreateOTP();
+idriss.resolve(...)
 ```
 ## node.js
 From cli:
@@ -126,10 +124,10 @@ And in code:
 
 ```javascript
 //for nodejs using ES6 modules
-import {IdrissCrypto, Authorization} from "idriss-crypto";
+import {IdrissCrypto} from "idriss-crypto";
 
 //for nodejs using commonJS
-const {IdrissCrypto, Authorization} = require("idriss-crypto");
+const {IdrissCrypto} = require("idriss-crypto");
 ```
 
 The library is designed both for es6 and cjs.
@@ -249,205 +247,7 @@ An example of implementation in the user interface:
 <img alt="UI Implementation Example" src="img/reverse_resolving.png"/>
 </p>
 
-
-## 3. Registering New Records
-
-### Onboard users to IDriss directly from your app's interface.
-
-##### All methods found below are available on testnet as well. For development purposes, simply append "Testnet" to the method call. 
-* CreateOTP -> CreateOTPTestnet
-* ValidateOTP -> ValidateOTPTestnet
-* CheckPayment -> CheckPaymentTestnet
-
-Visit [our docs](https://docs.idriss.xyz/developer-guides/smart-contracts) to check the mainnet and testnet payment contracts to call during the onboarding flow.
-
-*Class Authorization*
-
-An example of implementation in the user interface:
-
-<p align="center">
-<img alt="UI Implementation Example" src="img/registering_idriss.png"/>
-</p>
- 
-
-The workflow using plain API calls should follow this procedure:
-
-<p align="center">
-<img alt="Registration Workflow" src="img/signupWorkflow.png"/>
-</p>
-
-
-And using this library:
-
-#### CreateOTP
-
-```typescript
- public static async CreateOTP(tag:string, identifier:string, address:string, secretWord:string | null = null):Promise<CreateOTPResponse>
-```
-
-Params:
-
-* tag (string) - identifier for wallet. See below for options. Contact us on [Discord](https://discord.gg/RJhJKamjw5) to add additional tags.
-* identifier (string) - email, phone number with country code or @twitter handle (including "@")
-* address (string) - address to be linked with identifier+secret_word
-* secretWord(string, optional) - to be appended to identifier when using the resolver
-
-
-returns:
-
-```typescript
- class CreateOTPResponse {
-    public sessionKey: string;
-    public triesLeft: number;
-    public address: string;
-    public hash: string;
-    public message: string;
-    public nextStep: string;
-    public twitterId: string;
-    public twitterMsg: string;
-}
-```
-
-example:
-
-```typescript
-import {Authorization} from "idriss-crypto";
-
-const resCreateOTP = await Authorization.CreateOTP("Metamask ETH", "hello@idriss.xyz", "0x11E9F9344A9720d2B2B5F0753225bb805161139B")
-console.log(resCreateOTP.sessionKey)
-```
-
-
-available tags:
-
-* "Metamask ETH", "Binance ETH", "Coinbase ETH", "Exchange ETH", "Private ETH", "Essentials ETH", "Rainbow ETH", "Argent ETH", "Tally ETH", "Trust ETH", "Public ETH",
-* "Essentials BTC", "Binance BTC", "Coinbase BTC", "Exchange BTC", "Private BTC",
-* "Metamask USDT", "Binance USDT", "Coinbase USDT", "Exchange USDT", "Private USDT", "Essentials USDT", 
-* "Metamask USDC", "Binance USDC", "Coinbase USDC", "Exchange USDC", "Private USDC", "Essentials USDC", 
-* "Solana SOL", "Coinbase SOL", "Trust SOL", "Binance SOL", "Phantom SOL",
-* "Metamask BNB", "Essentials BNB", 
-* "Essentials ELA SC", "Essentials ELA" (Smart Chain and native ELA network)
-* "Essentials MATIC",  
-* "ERC20"
-
-tags must match address type, error thrown otherwise.
-
-#### ValidateOTP
-
-```typescript
-static async ValidateOTP(OTP:string, sessionKey:string):Promise<ValidateOTPResponse>
-```
-
-Validates if OTP is correct. If OTP is wrong, WrongOTPException is thrown. 
-
-Params:
-* OTP (string) - 6-digit number
-* sessionKey (string) - session key provided in first call 
-
-Returns:
-
-```typescript
-export class ValidateOTPResponse {
-    public message: string;
-    public session_key: string;
-    public pricePOL: number;
-    public priceETH: number;
-    public priceBNB: number;
-    public receiptID: string
-    public gas: number;
-}
-```
-
-Example:
-
-```typescript
-
-import {Authorization, WrongOTPException} from "idriss-crypto";
-
-try {
-    resValidateOTP = await Authorization.ValidateOTP("123456", "QNmxmWdWVZ3pm1rHEN7G");
-    console.log("Validated succesfully");
-} catch (ex) {
-    if (ex instanceof WrongOTPException) {
-        console.log("OTP is wrong");
-    } else {
-        console.log("Other error");
-    }
-}
-```
-Error is thrown if session is not valid anymore (more than 3 wrong OTPs), wrong OTP is provided, the transaction failed or the session key is unknown.
-
-
-If correct, 0 value payment ```pricePOL = 0``` must be performed using ```receiptID```:
-
-```typescript
-paymentContract = await loadPaymentContract(web3);
-
-receipt_hash = await paymentContract.methods.hashReceipt(String(resValidateOTP.receiptID), selectedAccount).call();
-
-payment = await paymentContract.methods.payNative(receipt_hash, resCreateOTP.hash, "IDriss").send({
-                from: selectedAccount,
-                value: 0,
-                gasPrice: resValidateOTP.gas
-            });
-```
-where ```loadPaymentContract()``` loads the [payment contract](https://docs.idriss.xyz/developer-guides/smart-contracts).
-
-#### CheckPayment
-
-```typescript
-static async CheckPayment(token: string, sessionKey: string): Promise<CheckPaymentResponse>
-```
-
-Validates if the payment is valid. If the performed payment is done incorrectly, an error is returned. 
-If the payment can be validated, the corresponding IDriss will be saved on the registry
-and the txnHash of the registration is returned. 
-The newly signed-up IDriss can now be found with the resolver (1).
-
-Params:
-* OTP (string) - 6-digit number
-* sessionKey (string) - session key provided in first call 
-
-Returns:
-
-```typescript
-export class ValidateOTPResponse {
-    public message: string;
-    public txnHash: string;
-    public sessionKey: string;
-    public referralLink: string;
-}
-```
-The referral link can be used to acquire IDriss points and can be viewed on our [dashboard](https://www.idriss.xyz/dashboard). More information on this can be found [here](https://docs.idriss.xyz/contributor-guides/reward-system).
-
-Example:
-
-```typescript
-
-import {Authorization, WrongOTPException} from "idriss-crypto";
-
-try {
-    await Authorization.ValidateOTP("123456", "QNmxmWdWVZ3pm1rHEN7G");
-    console.log("Validated succesfully");
-} catch  {
-    console.log("Error");
-}
-```
-
-
-#### Important Consideration
-* The address paying for the free sign up (``` selectedAccount ```) will be defined as the owner address of a given IDriss. We strongly advise that the payment transaction is confirmed by a wallet owned and operated by the user in pocession of the respective email/phone/Twitter account only. Only the owner address will be able to make any changes (including deletions) to an IDriss.
-* If ``` selectedAccount ``` has no funds, a faucet will deposit some funds (POL on Polygon) to pay for the gas fee of this 0 value transaction. This is part of the ``` validateOTP ``` call and funds will be deposited to the address provided in ``` createOTP ``` (the resolving address).
-
-## 4. Sending crypto & NFTs to emails, phone numbers, and Twitter usernames
-
-### Send to anyone, no wallet required for the recipient.
-* Supported assets: POL/ERC20/ERC721/ERC1155 on Polygon network.
-* Assets can be sent to individuals or distributed to groups of users. 
-* Assets are sent to a proxy smart contract. The approve function is invoked so the contract can hold the assets in escrow. A wallet is generated for the recipient during the claiming process. 
-* In case the recipient is already registered in the address book, assets are directly transferred to the user.
-
-Sample UI implementation: [IDriss Send](https://www.idriss.xyz/send)
+## 3. Sending crypto & NFTs to emails, phone numbers, and Twitter usernames
 
 **Use transferToIDriss**
 
@@ -480,29 +280,7 @@ const transactionReceipt = await idriss.transferToIDriss(
 console.log(transactionReceipt)
 
 ```
-This resolves to SendToHashTransactionReceipt object, which gives info about the transaction that was performed and if SendToHash smart contract was used, it returns claim password and claim url for the user
-
-You can also call the smart contact directly:
-
-```typescript
-async function loadContractSendToAnyone(web3) {
-    return await new web3.eth.Contract(
-        [{ "inputs": [ { "internalType": "string", "name": "_IDrissHash", "type": "string" }, { "internalType": "uint256", "name": "_amount", "type": "uint256" }, { "internalType": "enum AssetType", "name": "_assetType", "type": "uint8" }, { "internalType": "address", "name": "_assetContractAddress", "type": "address" }, { "internalType": "uint256", "name": "_assetId", "type": "uint256" }], "name": "sendToAnyone", "outputs": [], "stateMutability": "payable", "type": "function"}],
-        "0xB1f313dbA7c470fF351e19625dcDCC442d3243C4"
-    );
-}
-
-const hashWithPassword = await (await this.idrissSendToAnyoneContractPromise).methods
-    .hashIDrissWithPassword(IDrissHash, claimPassword).call()
-
-let sendToAnyoneContract = await loadContractSendToAnyone(defaultWeb3);
-reverse = await sendToAnyoneContract.methods
-    .sendToAnyone(hashWithPassword, 150, ASSET_TYPE_ERC20, '0x995945Fb74e0f8e345b3f35472c3e07202Eb38Ac', 0)
-    .send({
-        from: '0x5559C5Fb84e0f8e34bb3B35b72cAe0770AEb38Ac',
-        value: 1_000_000_000_000_000
-    });
-```
+This resolves to SendToHashTransactionReceipt object, which gives info about the transaction that was performed.
 
 **Use multitransferToIDriss**
 
@@ -544,9 +322,7 @@ const transactionReceipt = await obj.multitransferToIDriss([
 console.log(transactionReceipt)
 
 ```
-This resolves to MultiSendToHashTransactionReceipt object, which gives info about the transaction that was performed and if SendToHash smart contract was used, it returns list of claim passwords & claim links for the users
-
-Direct use of the smart contract multicall function is ill-advised, as there are many transformations for multicall to work
+This resolves to MultiSendToHashTransactionReceipt object, which gives info about the transaction that was performed. 
 
 ## Testing
 In order to run tests, please execute following commands:
@@ -559,9 +335,7 @@ yarn testE2e
 ## Working Examples
 
 
-* For functions (1) and (2), check our [browser extension](https://github.com/idriss-crypto/browser-extensions).
-* [IDriss Send](https://github.com/deliriusz/send-to-anyone-page) is an example for a working integration of (3).
-* Check the [claim page](https://github.com/idrisssystem/claim) of IDriss Send for a working example of functions (1) and (4).
+* For functions (1) and (2), check our [browser extension](https://github.com/idriss-xyz/core).
 
 ## License
 

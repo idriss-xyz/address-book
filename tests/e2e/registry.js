@@ -1,12 +1,4 @@
-const {
-  IdrissCrypto,
-  Authorization,
-  CreateOTPResponse,
-  WrongOTPException,
-  AuthorizationTestnet,
-  CreateOTPResponseTestnet,
-  WrongOTPExceptionTestnet,
-} = require('../../lib');
+const { IdrissCrypto } = require('../../lib');
 const assert = require('assert');
 const { BaseIdrissCrypto } = require('../../lib/baseIdrissCrypto');
 
@@ -77,7 +69,11 @@ describe('translating address', () => {
 
   it('Multi Resolve', async () => {
     const obj = await createProvider();
-    const resultAddress = await obj.multiResolve(['hello@idriss.xyz', '@IDriss_xyz']);
+    const resultAddress = await obj.multiResolve([
+      'hello@idriss.xyz',
+      '@IDriss_xyz',
+    ]);
+    console.log(resultAddress);
     assert.equal(
       resultAddress['hello@idriss.xyz']['Metamask ETH'],
       '0x11E9F9344A9720d2B2B5F0753225bb805161139B',
@@ -111,7 +107,6 @@ describe('translating address', () => {
       '0xe10A2331Ac5498e7544579167755d6a756786a9F',
     );
   }).timeout(10000);
-
 
   it('Basic request 2', async () => {
     const obj = await createProvider();
@@ -200,11 +195,23 @@ describe('Reversed translation', () => {
   it('Can reverse resolve batch addresses', async () => {
     const obj = await createProvider();
 
-    const resultReverseBatch = await obj.reverseResolve(['0x5ABca791C22E7f99237fCC04639E094Ffa0cCce9','0x4a3755eB99ae8b22AaFB8f16F0C51CF68Eb60b85', 'bc1qsvz5jumwew8haj4czxpzxujqz8z6xq4nxxh7vh']
+    const resultReverseBatch = await obj.reverseResolve([
+      '0x5ABca791C22E7f99237fCC04639E094Ffa0cCce9',
+      '0x4a3755eB99ae8b22AaFB8f16F0C51CF68Eb60b85',
+      'bc1qsvz5jumwew8haj4czxpzxujqz8z6xq4nxxh7vh',
+    ]);
+    assert.equal(
+      resultReverseBatch['0x5ABca791C22E7f99237fCC04639E094Ffa0cCce9'],
+      '@idriss_xyz',
     );
-    assert.equal(resultReverseBatch['0x5ABca791C22E7f99237fCC04639E094Ffa0cCce9'], '@idriss_xyz');
-    assert.equal(resultReverseBatch['0x4a3755eB99ae8b22AaFB8f16F0C51CF68Eb60b85'], '@levertz_');
-    assert.equal(resultReverseBatch['bc1qsvz5jumwew8haj4czxpzxujqz8z6xq4nxxh7vh'], '');
+    assert.equal(
+      resultReverseBatch['0x4a3755eB99ae8b22AaFB8f16F0C51CF68Eb60b85'],
+      '@levertz_',
+    );
+    assert.equal(
+      resultReverseBatch['bc1qsvz5jumwew8haj4czxpzxujqz8z6xq4nxxh7vh'],
+      '',
+    );
   }).timeout(10000);
 });
 
@@ -223,133 +230,15 @@ describe('getIDriss', () => {
 
     let error;
     try {
-    await obj.getIDriss('wrongString');
+      await obj.getIDriss('wrongString');
     } catch (e) {
       error = e;
     }
 
     assert(error instanceof Error);
-    assert.equal(error.message, 'Returned error: execution reverted: Binding does not exist.');
-  }).timeout(10000);
-});
-
-describe('Authorization', () => {
-  it('Twitter Create', async () => {
-    const secretWord = Math.random().toString();
-    const result = await Authorization.CreateOTP(
-      'Metamask ETH',
-      '@IDriss_xyz',
-      '0x11E9F9344A9720d2B2B5F0753225bb805161139B',
-      secretWord,
+    assert.equal(
+      error.message,
+      'Returned error: execution reverted: Binding does not exist.',
     );
-    assert(result instanceof CreateOTPResponse);
-    assert(result.triesLeft == 3);
-    assert(result.nextStep == 'validateOTP');
-    assert(result.address == '0x11E9F9344A9720d2B2B5F0753225bb805161139B');
-    assert(result.twitterId == '1416199220978089987');
-    assert(/^[0-9a-fA-F]{64}$/.test(result.hash));
-    assert(result.twitterMsg.includes('#IDriss Verification-ID'));
-  }).timeout(10000);
-  it('Wrong OTP', async () => {
-    const secretWord = Math.random().toString();
-    const result = await Authorization.CreateOTP(
-      'Metamask ETH',
-      'hello@idriss.xyz',
-      '0x11E9F9344A9720d2B2B5F0753225bb805161139B',
-      secretWord,
-    );
-    assert(result instanceof CreateOTPResponse);
-    assert(result.triesLeft == 3);
-    assert(result.nextStep == 'validateOTP');
-    assert(result.address == '0x11E9F9344A9720d2B2B5F0753225bb805161139B');
-    //assert(result.twitterId=="0");
-    assert(/^[0-9a-fA-F]{64}$/.test(result.hash));
-    let error = null;
-    try {
-      await Authorization.ValidateOTP('0', result.sessionKey, secretWord);
-    } catch (e) {
-      error = e;
-    }
-    assert(error instanceof WrongOTPException);
-  }).timeout(10000);
-  it('Payment error', async () => {
-    const secretWord = Math.random().toString();
-    const result = await Authorization.CreateOTP(
-      'Metamask ETH',
-      'hello@idriss.xyz',
-      '0x11E9F9344A9720d2B2B5F0753225bb805161139B',
-      secretWord,
-    );
-    assert(result instanceof CreateOTPResponse);
-    let error = null;
-    try {
-      await Authorization.CheckPayment('POL', result.sessionKey);
-    } catch (e) {
-      error = e;
-    }
-    assert(error instanceof Error);
-  }).timeout(10000);
-});
-
-describe('AuthorizationTestnet', () => {
-  it('Twitter Create', async () => {
-    const secretWord = Math.random().toString();
-    const result = await AuthorizationTestnet.CreateOTP(
-      'Metamask ETH',
-      '@IDriss_xyz',
-      '0x11E9F9344A9720d2B2B5F0753225bb805161139B',
-      secretWord,
-    );
-    assert(result instanceof CreateOTPResponseTestnet);
-    assert(result.triesLeft == 3);
-    assert(result.nextStep == 'validateOTP');
-    assert(result.address == '0x11E9F9344A9720d2B2B5F0753225bb805161139B');
-    assert(result.twitterId == '1416199220978089987');
-    assert(result.network == 'mumbai');
-    assert(/^[0-9a-fA-F]{64}$/.test(result.hash));
-    assert(result.twitterMsg.includes('#IDriss Verification-ID'));
-  }).timeout(10000);
-  it('Wrong OTP', async () => {
-    const secretWord = Math.random().toString();
-    const result = await AuthorizationTestnet.CreateOTP(
-      'Metamask ETH',
-      'hello@idriss.xyz',
-      '0x11E9F9344A9720d2B2B5F0753225bb805161139B',
-      secretWord,
-    );
-    assert(result instanceof CreateOTPResponseTestnet);
-    assert(result.triesLeft == 3);
-    assert(result.nextStep == 'validateOTP');
-    assert(result.address == '0x11E9F9344A9720d2B2B5F0753225bb805161139B');
-    //assert(result.twitterId=="0");
-    assert(/^[0-9a-fA-F]{64}$/.test(result.hash));
-    let error = null;
-    try {
-      await AuthorizationTestnet.ValidateOTP(
-        '0',
-        result.sessionKey,
-        secretWord,
-      );
-    } catch (e) {
-      error = e;
-    }
-    assert(error instanceof WrongOTPExceptionTestnet);
-  }).timeout(10000);
-  it('Payment error', async () => {
-    const secretWord = Math.random().toString();
-    const result = await AuthorizationTestnet.CreateOTP(
-      'Metamask ETH',
-      'hello@idriss.xyz',
-      '0x11E9F9344A9720d2B2B5F0753225bb805161139B',
-      secretWord,
-    );
-    assert(result instanceof CreateOTPResponseTestnet);
-    let error = null;
-    try {
-      await AuthorizationTestnet.CheckPayment('POL', result.sessionKey);
-    } catch (e) {
-      error = e;
-    }
-    assert(error instanceof Error);
   }).timeout(10000);
 });
