@@ -1,6 +1,6 @@
 {
-  "name": "idriss-crypto",
-  "version": "1.9.4",
+  "name": "@idriss-xyz/address-book",
+  "version": "1.0.0",
   "main": "./lib/index.js",
   "module": "./lib/esnext/index.js",
   "exports": {
@@ -24,8 +24,8 @@
       "require": "./lib/browser.js"
     }
   },
-  "repository": "https://github.com/idriss-crypto/ts-library.git",
-  "author": "IDriss.xyz",
+  "repository": "https://github.com/idriss-xyz/address-book.git",
+  "author": "IDRISS",
   "license": "MIT",
   "scripts": {
     "build": "tsc -d --declarationDir lib --module commonjs && tsc -d --declarationDir lib/esnext --outDir lib/esnext --module es2020 && webpack --env m=1  && webpack --env m=2",
