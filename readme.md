@@ -28,14 +28,14 @@ This library lets you integrate 3 independent functions from two products:
 
 ## Cloning This Lib
 ```
-git clone --recurse-submodules https://github.com/idriss-crypto/contracts.git
+git clone --recurse-submodules https://github.com/idriss-xyz/contracts.git
 ```
 
 ## Sample Usage and Quick Setup
 
 
 ```javascript
-import {IdrissCrypto} from "idriss-crypto";
+import {IdrissCrypto} from "@idriss-xyz/address-book";
 
 const idriss = new IdrissCrypto();
 const resultEmail = await idriss.resolve("hello@idriss.xyz");
@@ -86,26 +86,26 @@ Resolves to:
 # How to Load This Library?
 ## Webpage with webpack
 ```bash
-npm install idriss-crypto
+npm install @idriss-xyz/address-book
 #or
-yarn add idriss-crypto
+yarn add @idriss-xyz/address-book
 ```
 
 And in code:
 
 ```javascript
-import {IdrissCrypto} from "idriss-crypto/browser";
+import {IdrissCrypto} from "@idriss-xyz/address-book/browser";
 ```
 ## Webpage without webpack
 If you prefer using ES6 modules, you can import the library with
 ```js
-import {IdrissCrypto} from "https://unpkg.com/idriss-crypto/lib/bundle/modules.js"
+import {IdrissCrypto} from "https://unpkg.com/@idriss-xyz/address-book/lib/bundle/modules.js"
 ```
 
 Alternatively, you can simply load it as a js file in your HTML environment using this <script> tag:
 
 ```html
-<script src="https://unpkg.com/idriss-crypto/lib/bundle/global.js"></script>
+<script src="https://unpkg.com/@idriss-xyz/address-book/lib/bundle/global.js"></script>
 ```
 then the objects are available as global variables under IdrissCrypto, for example
 ```js
@@ -115,19 +115,19 @@ idriss.resolve(...)
 ## node.js
 From cli:
 ```bash
-npm install idriss-crypto
+npm install @idriss-xyz/address-book
 #or
-yarn add idriss-crypto
+yarn add @idriss-xyz/address-book
 ```
 
 And in code:
 
 ```javascript
 //for nodejs using ES6 modules
-import {IdrissCrypto} from "idriss-crypto";
+import {IdrissCrypto} from "@idriss-xyz/address-book";
 
 //for nodejs using commonJS
-const {IdrissCrypto} = require("idriss-crypto");
+const {IdrissCrypto} = require("@idriss-xyz/address-book");
 ```
 
 The library is designed both for es6 and cjs.
@@ -339,4 +339,4 @@ yarn testE2e
 
 ## License
 
-This project is licensed under [GPLv3](https://github.com/idriss-crypto/ts-library/blob/master/LICENSE).
+This project is licensed under [GPLv3](https://github.com/idriss-xyz/address-book/blob/master/LICENSE).
